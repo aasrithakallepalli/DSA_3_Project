@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plagiarism Checker for Short Documents</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--b1:#fdeff7;--b2:#eaf0ff;--b3:#e6f8f0;--card:rgba(255,255,255,.72);--tx:#3b3a52;--mut:#8481a0;--ac:#a58bfa;--ac2:#f7a8cf;--mint:#9be3c4;--peach:#fdd2ad;--sky:#a9d4fb;--mk:#ffe49a;--bd:rgba(165,139,250,.25);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--b1:#231c3a;--b2:#1a2040;--b3:#16302f;--card:rgba(48,43,86,.62);--tx:#ece9ff;--mut:#a9a5cc;--mk:#7a5f2a;--bd:rgba(190,170,255,.22)}}
+:root[data-theme="dark"]{--b1:#231c3a;--b2:#1a2040;--b3:#16302f;--card:rgba(48,43,86,.62);--tx:#ece9ff;--mut:#a9a5cc;--mk:#7a5f2a;--bd:rgba(190,170,255,.22)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;font-family:'Nunito','Segoe UI',system-ui,sans-serif;color:var(--tx);background:linear-gradient(135deg,var(--b1),var(--b2) 55%,var(--b3));background-attachment:fixed;transition:background .4s}
+.blob{position:fixed;border-radius:50%;filter:blur(60px);opacity:.5;z-index:0;animation:fl 12s ease-in-out infinite alternate;pointer-events:none}
+.blob.a{width:320px;height:320px;background:var(--ac2);top:-80px;left:-60px}.blob.b{width:360px;height:360px;background:var(--sky);bottom:-100px;right:-80px;animation-delay:-4s}.blob.c{width:240px;height:240px;background:var(--mint);top:40%;left:55%;animation-delay:-8s}
+@keyframes fl{to{transform:translate(40px,-30px) scale(1.15)}}
+.hide{display:none!important}
+.card{background:var(--card);backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:22px;padding:22px;box-shadow:0 12px 40px rgba(130,110,200,.15);position:relative;z-index:1}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;padding:11px 20px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 6px 18px rgba(165,139,250,.35);transition:transform .15s}
+button:hover{transform:translateY(-2px)}button.ghost{background:transparent;color:var(--tx);border:1px solid var(--bd);box-shadow:none}
+input,textarea{width:100%;font:inherit;color:var(--tx);background:rgba(255,255,255,.35);border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;outline:0}
+input:focus,textarea:focus{border-color:var(--ac)}textarea{min-height:170px;resize:vertical}
+label.f{display:block;margin:12px 0 5px;font-size:13px;font-weight:700;color:var(--mut)}
+/* auth */
+#auth{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:center;padding:24px;max-width:1100px;margin:auto}
+.stage{perspective:900px;height:420px;display:grid;place-items:center}
+.tiltbox{transform-style:preserve-3d;transition:transform .15s}
+.cube{width:90px;height:90px;position:relative;transform-style:preserve-3d;animation:spin 16s linear infinite;margin:auto}
+.cube.sm{width:70px;height:70px}
+@keyframes spin{to{transform:rotateX(360deg) rotateY(360deg)}}
+.cube i{position:absolute;inset:0;border-radius:16px;border:2px solid rgba(255,255,255,.7);background:linear-gradient(135deg,var(--ac2),var(--sky));opacity:.88;display:grid;place-items:center;font-style:normal;font-size:28px}
+.cube.sm i{font-size:22px;border-radius:9px}
+.cube i:nth-child(1){transform:translateZ(45px)}.cube i:nth-child(2){transform:rotateY(180deg) translateZ(45px);background:linear-gradient(135deg,var(--mint),var(--sky))}
+.cube i:nth-child(3){transform:rotateY(90deg) translateZ(45px);background:linear-gradient(135deg,var(--peach),var(--ac2))}.cube i:nth-child(4){transform:rotateY(-90deg) translateZ(45px);background:linear-gradient(135deg,var(--ac),var(--sky))}
+.cube i:nth-child(5){transform:rotateX(90deg) translateZ(45px);background:linear-gradient(135deg,var(--mint),var(--peach))}.cube i:nth-child(6){transform:rotateX(-90deg) translateZ(45px)}
+.cube.sm i:nth-child(1){transform:translateZ(35px)}.cube.sm i:nth-child(2){transform:rotateY(180deg) translateZ(35px)}.cube.sm i:nth-child(3){transform:rotateY(90deg) translateZ(35px)}.cube.sm i:nth-child(4){transform:rotateY(-90deg) translateZ(35px)}.cube.sm i:nth-child(5){transform:rotateX(90deg) translateZ(35px)}.cube.sm i:nth-child(6){transform:rotateX(-90deg) translateZ(35px)}
+.sheet{position:absolute;width:120px;height:150px;border-radius:14px;background:var(--card);border:1px solid var(--bd);padding:14px;animation:bob 5s ease-in-out infinite alternate}
+.sheet b{display:block;height:7px;border-radius:5px;background:var(--ac);opacity:.5;margin:8px 0}.sheet b:nth-child(2){width:70%;background:var(--ac2)}.sheet b:nth-child(4){width:50%;background:var(--mint)}
+@keyframes bob{to{margin-top:-18px}}
+.tabs{display:flex;gap:6px;background:rgba(255,255,255,.3);padding:5px;border-radius:16px;margin-bottom:8px}.tabs button{flex:1;background:transparent;color:var(--mut);box-shadow:none}.tabs button.on{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+h1{margin:0 0 4px;font-size:27px;line-height:1.15}.sub{color:var(--mut);margin:0 0 10px}.err{color:#e0668f;font-size:13px;min-height:18px;margin-top:8px}
+/* app */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 22px;background:var(--card);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd)}
+.logo{font-weight:800;font-size:17px;display:flex;align-items:center;gap:10px;margin-right:auto}
+nav{display:flex;gap:6px}nav button{background:transparent;color:var(--tx);box-shadow:none;padding:9px 15px}nav button.on{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+.chip{background:var(--bd);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700}
+.sw{position:relative;width:54px;height:28px;flex:none}.sw input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:2}
+.sw span{position:absolute;inset:0;border-radius:20px;background:var(--sky);transition:.3s;font-size:14px;padding:4px 6px;display:flex;justify-content:space-between}
+.sw span:after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.3s;box-shadow:0 2px 6px rgba(0,0,0,.2)}.sw input:checked+span{background:var(--ac)}.sw input:checked+span:after{transform:translateX(26px)}
+main{position:relative;z-index:1;max-width:1050px;margin:auto;padding:22px}
+.hero{display:flex;align-items:center;gap:20px;margin-bottom:18px;perspective:700px}.hero .cubewrap{width:110px;perspective:500px;flex:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.drop{border:2px dashed var(--ac);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:14px;color:var(--mut);cursor:pointer;background:rgba(255,255,255,.2)}.drop:hover{background:rgba(165,139,250,.15)}
+.res{margin-top:18px;animation:up .5s}@keyframes up{from{opacity:0;transform:translateY(16px)}}
+.top{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.ring{--p:0;width:140px;height:140px;border-radius:50%;background:conic-gradient(var(--c,var(--mint)) calc(var(--p)*1%),var(--bd) 0);display:grid;place-items:center;flex:none}
+.ring div{width:108px;height:108px;border-radius:50%;background:var(--b2);display:grid;place-items:center;font-size:28px;font-weight:800;text-align:center}.ring small{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.src{display:grid;grid-template-columns:150px 1fr 54px;gap:10px;align-items:center;margin:10px 0;font-size:14px}.src small{color:var(--mut);display:block}
+.bar{height:12px;background:var(--bd);border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--mint),var(--ac),var(--ac2));transition:width 1s}
+.txt{background:rgba(255,255,255,.25);border:1px solid var(--bd);border-radius:14px;padding:14px;line-height:1.75;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+mark{background:var(--mk);color:inherit;border-radius:5px;padding:1px 2px}
+.h{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;margin:8px 0;border:1px solid var(--bd);background:rgba(255,255,255,.2)}.h .pill{margin-left:auto;font-weight:800}
+.tag{font-size:12px;padding:3px 10px;border-radius:12px;background:var(--bd);font-weight:700}
+.tilt{transition:transform .2s;transform-style:preserve-3d}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ac);color:#fff;padding:12px 22px;border-radius:14px;z-index:99;font-weight:700;opacity:0;transition:.3s;pointer-events:none}#toast.on{opacity:1}
+@media(max-width:800px){#auth{grid-template-columns:1fr}.stage{height:240px}.grid2{grid-template-columns:1fr}.src{grid-template-columns:100px 1fr 46px}.hero .cubewrap{display:none}}
+</style></head><body>
+<div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
+
+<section id="auth">
+ <div class="stage"><div class="tiltbox" id="tb"><div class="sheet" style="transform:translate(-150px,-60px) translateZ(-40px) rotate(-10deg)"><b></b><b></b><b></b><b></b></div><div class="sheet" style="transform:translate(110px,50px) translateZ(60px) rotate(8deg);animation-delay:-2s"><b></b><b></b><b></b><b></b></div><div class="cube"><i>📄</i><i>🔍</i><i>✅</i><i>📑</i><i>📝</i><i>🌐</i></div></div></div>
+ <div class="card"><div class="tabs"><button id="tL" class="on">Login</button><button id="tS">Sign up</button></div>
+  <h1 id="aT">Welcome back</h1><p class="sub">Plagiarism Checker for Short Documents</p>
+  <form id="af" autocomplete="off" onsubmit="return false">
+   <label class="f">Student name</label><input id="un" type="text" autocomplete="off" placeholder="Your full name">
+   <label class="f">Roll number</label><input id="ur" type="text" autocomplete="off" placeholder="Your roll number">
+   <div class="row"><button id="go" style="width:100%">Login</button></div><div class="err" id="er"></div>
+  </form></div>
+</section>
+
+<div id="app" class="hide">
+ <header><div class="logo"><div class="cubewrap" style="perspective:300px;width:40px;height:40px"><div class="cube sm" style="margin:-15px 0 0 -15px;position:relative;left:50%;top:50%"><i>📄</i><i>🔍</i><i>✅</i><i>📑</i><i>📝</i><i>🌐</i></div></div>Plagiarism Checker for Short Documents</div>
+  <nav><button data-v="web" class="on">🌐 Web check</button><button data-v="cmp">⚖️ Compare</button><button data-v="his">🕘 History</button></nav>
+  <label class="sw" title="Light / dark"><input type="checkbox" id="th"><span><em>☀️</em><em>🌙</em></span></label>
+  <span class="chip" id="me"></span><button class="ghost" id="lo" style="padding:8px 14px">Logout</button></header>
+ <main>
+  <div class="hero card tilt"><div><h1>Check your document</h1><p class="sub" style="margin:0">Find out how much of your writing matches other sources, and see exactly which lines are similar.</p></div></div>
+
+  <section id="v-web"><div class="card tilt"><h1 style="font-size:21px">Search the web</h1><p class="sub">Paste text or upload a file (Word, PowerPoint, PDF, TXT). We look for matching passages across websites.</p>
+   <label class="drop"><input type="file" id="fw" class="hide" accept=".txt,.md,.pdf,.docx,.pptx,.odt,.html,.csv">📎 <span id="nw">Upload a document</span></label>
+   <textarea id="tw" autocomplete="off" placeholder="…or paste your text here"></textarea>
+   <div class="row"><button id="bw">🔍 Check for plagiarism</button><button class="ghost" id="sm">Try a sample</button></div></div><div id="rw"></div></section>
+
+  <section id="v-cmp" class="hide"><div class="card"><h1 style="font-size:21px">Compare two documents</h1><p class="sub">Upload any two files in any format, or paste text, and see what they share.</p>
+   <div class="grid2"><div><label class="drop"><input type="file" id="f1" class="hide" accept=".txt,.md,.pdf,.docx,.pptx,.odt,.html,.csv">📎 <span id="n1">Document A</span></label><textarea id="t1" autocomplete="off" placeholder="Document A text"></textarea></div>
+   <div><label class="drop"><input type="file" id="f2" class="hide" accept=".txt,.md,.pdf,.docx,.pptx,.odt,.html,.csv">📎 <span id="n2">Document B</span></label><textarea id="t2" autocomplete="off" placeholder="Document B text"></textarea></div></div>
+   <div class="row"><button id="bc">⚖️ Compare documents</button></div></div><div id="rc"></div></section>
+
+  <section id="v-his" class="hide"><div class="card"><div class="row" style="margin:0"><h1 style="font-size:21px;margin:0">Your history</h1><button class="ghost" id="ch" style="margin-left:auto">Clear</button></div><div id="hl"></div></div></section>
+ </main>
+</div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const ST={g(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let users=ST.g('pc_users',{}),me=null,hist=[],mode='L';
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2600)}
+/* theme */
+const dk=ST.g('pc_theme',matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function setTheme(t){document.documentElement.dataset.theme=t;$('#th').checked=t=='dark';ST.s('pc_theme',t)}setTheme(dk);
+$('#th').onchange=e=>setTheme(e.target.checked?'dark':'light');
+/* 3D tilt */
+addEventListener('mousemove',e=>{const x=(e.clientX/innerWidth-.5),y=(e.clientY/innerHeight-.5);$('#tb').style.transform=`rotateY(${x*30}deg) rotateX(${-y*24}deg)`;
+$$('.tilt').forEach(c=>{const r=c.getBoundingClientRect();const dx=(e.clientX-r.left-r.width/2)/r.width,dy=(e.clientY-r.top-r.height/2)/r.height;c.style.transform=Math.abs(dx)<.7&&Math.abs(dy)<.9?`perspective(900px) rotateY(${dx*4}deg) rotateX(${-dy*4}deg)`:''})});
+/* auth */
+function setMode(m){mode=m;$('#tL').classList.toggle('on',m=='L');$('#tS').classList.toggle('on',m=='S');$('#go').textContent=m=='L'?'Login':'Create account';$('#aT').textContent=m=='L'?'Welcome back':'Create your account';$('#er').textContent=''}
+$('#tL').onclick=()=>setMode('L');$('#tS').onclick=()=>setMode('S');
+$('#go').onclick=()=>{const n=$('#un').value.trim(),r=$('#ur').value.trim().toUpperCase();if(!n||!r){$('#er').textContent='Please enter your name and roll number.';return}
+ if(mode=='S'){if(users[r]){$('#er').textContent='This roll number already has an account. Please login.';return}users[r]=n;ST.s('pc_users',users)}
+ else{if(!users[r]||users[r].toLowerCase()!=n.toLowerCase()){$('#er').textContent='No matching account found. Check your details or sign up.';return}}
+ me={n:users[r],r};hist=ST.g('pc_h_'+r,[]);$('#me').textContent=me.n+' · '+r;$('#auth').classList.add('hide');$('#app').classList.remove('hide');$('#un').value=$('#ur').value='';renderH();toast('Welcome, '+me.n+'!')};
+$('#lo').onclick=()=>{me=null;$('#app').classList.add('hide');$('#auth').classList.remove('hide')};
+$$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.classList.toggle('on',x==b));['web','cmp','his'].forEach(v=>$('#v-'+v).classList.toggle('hide',v!=b.dataset.v))});
+/* file reading */
+async function readFile(f){const e=f.name.split('.').pop().toLowerCase();
+ if(['txt','md','csv','html','json'].includes(e)){let t=await f.text();return e=='html'?new DOMParser().parseFromString(t,'text/html').body.textContent:t}
+ if(['docx','pptx','odt'].includes(e)){const z=await JSZip.loadAsync(await f.arrayBuffer());let o='';
+  const ns=Object.keys(z.files).filter(n=>e=='docx'?n=='word/document.xml':e=='pptx'?/^ppt\/slides\/slide\d+\.xml$/.test(n):n=='content.xml').sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  for(const n of ns)o+=(await z.file(n).async('string')).replace(/<\/(w:p|a:p|text:p)>/g,'\n').replace(/<[^>]+>/g,' ')+'\n';
+  return o.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/[ \t]+/g,' ')}
+ if(e=='pdf'){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let o='';for(let i=1;i<=d.numPages;i++){const c=await(await d.getPage(i)).getTextContent();o+=c.items.map(x=>x.str).join(' ')+'\n'}return o}
+ throw 0}
+function hook(fi,ta,nm){$(fi).onchange=async e=>{const f=e.target.files[0];if(!f)return;try{$(ta).value=(await readFile(f)).trim();$(nm).textContent=f.name;toast('Loaded '+f.name)}catch(x){toast("Couldn't read that file. Try Word, PowerPoint, PDF or TXT.")}}}
+hook('#fw','#tw','#nw');hook('#f1','#t1','#n1');hook('#f2','#t2','#n2');
+async function post(u,o){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(o)});if(!r.ok)throw 0;return r.json()}
+const NOSRV="Can't reach the Java server. Start it with: java Server";
+$('#sm').onclick=()=>{$('#tw').value="Climate change refers to long term shifts in temperatures and weather patterns. Since the nineteenth century human activities have been the main driver of climate change, mostly through burning fossil fuels. Photosynthesis is the process by which green plants convert light energy into chemical energy, and it is essential for life on our planet.";$('#nw').textContent='Sample text loaded'};
+/* render helpers */
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function hl(raw,m){let o='',on=0;raw.forEach((w,i)=>{if(m[i]&&!on){o+='<mark>';on=1}if(!m[i]&&on){o+='</mark> ';on=0}o+=esc(w)+' '});return o+(on?'</mark>':'')}
+const verdict=p=>p<15?['Looks original','#9be3c4']:p<40?['Some similarity','#fdd2ad']:['High similarity','#f7a8cf'];
+const ring=p=>{const v=verdict(p);return`<div class="ring" style="--p:${p};--c:${v[1]}"><div><span>${p}%<small>${v[0]}</small></span></div></div>`};
+function save(type,title,score,top){hist.unshift({type,title,score,top,d:new Date().toLocaleString()});hist=hist.slice(0,50);ST.s('pc_h_'+me.r,hist);renderH()}
+function renderH(){$('#hl').innerHTML=hist.length?hist.map(h=>`<div class="h"><span style="font-size:24px">${h.type=='web'?'🌐':'⚖️'}</span><div><b>${esc(h.title)}</b><small style="display:block;color:var(--mut)">${h.d} · ${h.top}</small></div><span class="pill">${h.score}%</span></div>`).join(''):'<p class="sub" style="margin-top:14px">No checks yet. Your results will appear here.</p>'}
+$('#ch').onclick=()=>{hist=[];ST.s('pc_h_'+me.r,hist);renderH()};
+/* web check (Java: Rabin-Karp, KMP, suffix array + LCP) */
+$('#bw').onclick=async()=>{const t=$('#tw').value.trim();let r;try{r=await post('/api/web',{text:t})}catch(e){toast(NOSRV);return}
+ if(r.error){toast(r.error);return}const s=r.sources,top=s[0].pct?s[0].name:'No matches';
+ $('#rw').innerHTML=`<div class="card res"><div class="top">${ring(r.total)}<div><h1 style="font-size:20px">Overall match: ${r.total}%</h1><p class="sub" style="margin:0">${s[0].pct?`Most similar source: <b>${s[0].name}</b> (${s[0].pct}%)`:'No matching sources were found.'}</p></div></div>
+ <h3>Similarity by source</h3>${s.map(x=>`<div class="src"><div><b>${x.name}</b><small>${x.url}</small></div><div class="bar"><i style="width:${x.pct}%"></i></div><b>${x.pct}%</b></div>`).join('')}
+ <h3>Highlighted matches</h3><div class="txt">${hl(r.words,r.marks)}</div></div>`;save('web',t.slice(0,48)+(t.length>48?'...':''),r.total,top)};
+/* compare (Java: Rabin-Karp, Z-function, suffix array + LCP) */
+$('#bc').onclick=async()=>{let r;try{r=await post('/api/compare',{a:$('#t1').value,b:$('#t2').value})}catch(e){toast(NOSRV);return}
+ if(r.error){toast(r.error);return}
+ $('#rc').innerHTML=`<div class="card res"><div class="top">${ring(r.overall)}<div><h1 style="font-size:20px">Documents match: ${r.overall}%</h1><p class="sub" style="margin:0">${r.pa}% of Document A appears in B · ${r.pb}% of Document B appears in A</p></div></div>
+ <div class="grid2" style="margin-top:16px"><div><h3>Document A</h3><div class="txt">${hl(r.aw,r.am)}</div></div><div><h3>Document B</h3><div class="txt">${hl(r.bw,r.bm)}</div></div></div></div>`;
+ const n1=$('#n1').textContent,n2=$('#n2').textContent;save('cmp',(n1.startsWith('Doc')?'Document A':n1)+' vs '+(n2.startsWith('Doc')?'Document B':n2),r.overall,r.pa+'% / '+r.pb+'% overlap')};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--b1:#fdeff7;--b2:#eaf0ff;--b3:#e6f8f0;--card:rgba(255,255,255,.72);--tx:#3b3a52;--mut:#8481a0;--ac:#a58bfa;--ac2:#f7a8cf;--mint:#9be3c4;--peach:#fdd2ad;--sky:#a9d4fb;--mk:#ffe49a;--bd:rgba(165,139,250,.25);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--b1:#231c3a;--b2:#1a2040;--b3:#16302f;--card:rgba(48,43,86,.62);--tx:#ece9ff;--mut:#a9a5cc;--mk:#7a5f2a;--bd:rgba(190,170,255,.22)}}
+:root[data-theme="dark"]{--b1:#231c3a;--b2:#1a2040;--b3:#16302f;--card:rgba(48,43,86,.62);--tx:#ece9ff;--mut:#a9a5cc;--mk:#7a5f2a;--bd:rgba(190,170,255,.22)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;font-family:'Nunito','Segoe UI',system-ui,sans-serif;color:var(--tx);background:linear-gradient(135deg,var(--b1),var(--b2) 55%,var(--b3));background-attachment:fixed;transition:background .4s}
+.blob{position:fixed;border-radius:50%;filter:blur(60px);opacity:.5;z-index:0;animation:fl 12s ease-in-out infinite alternate;pointer-events:none}
+.blob.a{width:320px;height:320px;background:var(--ac2);top:-80px;left:-60px}.blob.b{width:360px;height:360px;background:var(--sky);bottom:-100px;right:-80px;animation-delay:-4s}.blob.c{width:240px;height:240px;background:var(--mint);top:40%;left:55%;animation-delay:-8s}
+@keyframes fl{to{transform:translate(40px,-30px) scale(1.15)}}
+.hide{display:none!important}
+.card{background:var(--card);backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:22px;padding:22px;box-shadow:0 12px 40px rgba(130,110,200,.15);position:relative;z-index:1}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;padding:11px 20px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 6px 18px rgba(165,139,250,.35);transition:transform .15s}
+button:hover{transform:translateY(-2px)}button.ghost{background:transparent;color:var(--tx);border:1px solid var(--bd);box-shadow:none}
+input,textarea{width:100%;font:inherit;color:var(--tx);background:rgba(255,255,255,.35);border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;outline:0}
+input:focus,textarea:focus{border-color:var(--ac)}textarea{min-height:170px;resize:vertical}
+label.f{display:block;margin:12px 0 5px;font-size:13px;font-weight:700;color:var(--mut)}
+/* auth */
+#auth{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:center;padding:24px;max-width:1100px;margin:auto}
+.stage{perspective:900px;height:420px;display:grid;place-items:center}
+.tiltbox{transform-style:preserve-3d;transition:transform .15s}
+.cube{width:90px;height:90px;position:relative;transform-style:preserve-3d;animation:spin 16s linear infinite;margin:auto}
+.cube.sm{width:70px;height:70px}
+@keyframes spin{to{transform:rotateX(360deg) rotateY(360deg)}}
+.cube i{position:absolute;inset:0;border-radius:16px;border:2px solid rgba(255,255,255,.7);background:linear-gradient(135deg,var(--ac2),var(--sky));opacity:.88;display:grid;place-items:center;font-style:normal;font-size:28px}
+.cube.sm i{font-size:22px;border-radius:9px}
+.cube i:nth-child(1){transform:translateZ(45px)}.cube i:nth-child(2){transform:rotateY(180deg) translateZ(45px);background:linear-gradient(135deg,var(--mint),var(--sky))}
+.cube i:nth-child(3){transform:rotateY(90deg) translateZ(45px);background:linear-gradient(135deg,var(--peach),var(--ac2))}.cube i:nth-child(4){transform:rotateY(-90deg) translateZ(45px);background:linear-gradient(135deg,var(--ac),var(--sky))}
+.cube i:nth-child(5){transform:rotateX(90deg) translateZ(45px);background:linear-gradient(135deg,var(--mint),var(--peach))}.cube i:nth-child(6){transform:rotateX(-90deg) translateZ(45px)}
+.cube.sm i:nth-child(1){transform:translateZ(35px)}.cube.sm i:nth-child(2){transform:rotateY(180deg) translateZ(35px)}.cube.sm i:nth-child(3){transform:rotateY(90deg) translateZ(35px)}.cube.sm i:nth-child(4){transform:rotateY(-90deg) translateZ(35px)}.cube.sm i:nth-child(5){transform:rotateX(90deg) translateZ(35px)}.cube.sm i:nth-child(6){transform:rotateX(-90deg) translateZ(35px)}
+.sheet{position:absolute;width:120px;height:150px;border-radius:14px;background:var(--card);border:1px solid var(--bd);padding:14px;animation:bob 5s ease-in-out infinite alternate}
+.sheet b{display:block;height:7px;border-radius:5px;background:var(--ac);opacity:.5;margin:8px 0}.sheet b:nth-child(2){width:70%;background:var(--ac2)}.sheet b:nth-child(4){width:50%;background:var(--mint)}
+@keyframes bob{to{margin-top:-18px}}
+.tabs{display:flex;gap:6px;background:rgba(255,255,255,.3);padding:5px;border-radius:16px;margin-bottom:8px}.tabs button{flex:1;background:transparent;color:var(--mut);box-shadow:none}.tabs button.on{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+h1{margin:0 0 4px;font-size:27px;line-height:1.15}.sub{color:var(--mut);margin:0 0 10px}.err{color:#e0668f;font-size:13px;min-height:18px;margin-top:8px}
+/* app */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 22px;background:var(--card);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd)}
+.logo{font-weight:800;font-size:17px;display:flex;align-items:center;gap:10px;margin-right:auto}
+nav{display:flex;gap:6px}nav button{background:transparent;color:var(--tx);box-shadow:none;padding:9px 15px}nav button.on{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+.chip{background:var(--bd);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700}
+.sw{position:relative;width:54px;height:28px;flex:none}.sw input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:2}
+.sw span{position:absolute;inset:0;border-radius:20px;background:var(--sky);transition:.3s;font-size:14px;padding:4px 6px;display:flex;justify-content:space-between}
+.sw span:after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.3s;box-shadow:0 2px 6px rgba(0,0,0,.2)}.sw input:checked+span{background:var(--ac)}.sw input:checked+span:after{transform:translateX(26px)}
+main{position:relative;z-index:1;max-width:1050px;margin:auto;padding:22px}
+.hero{display:flex;align-items:center;gap:20px;margin-bottom:18px;perspective:700px}.hero .cubewrap{width:110px;perspective:500px;flex:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.drop{border:2px dashed var(--ac);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:14px;color:var(--mut);cursor:pointer;background:rgba(255,255,255,.2)}.drop:hover{background:rgba(165,139,250,.15)}
+.res{margin-top:18px;animation:up .5s}@keyframes up{from{opacity:0;transform:translateY(16px)}}
+.top{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.ring{--p:0;width:140px;height:140px;border-radius:50%;background:conic-gradient(var(--c,var(--mint)) calc(var(--p)*1%),var(--bd) 0);display:grid;place-items:center;flex:none}
+.ring div{width:108px;height:108px;border-radius:50%;background:var(--b2);display:grid;place-items:center;font-size:28px;font-weight:800;text-align:center}.ring small{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.src{display:grid;grid-template-columns:150px 1fr 54px;gap:10px;align-items:center;margin:10px 0;font-size:14px}.src small{color:var(--mut);display:block}
+.bar{height:12px;background:var(--bd);border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--mint),var(--ac),var(--ac2));transition:width 1s}
+.txt{background:rgba(255,255,255,.25);border:1px solid var(--bd);border-radius:14px;padding:14px;line-height:1.75;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+mark{background:var(--mk);color:inherit;border-radius:5px;padding:1px 2px}
+.h{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;margin:8px 0;border:1px solid var(--bd);background:rgba(255,255,255,.2)}.h .pill{margin-left:auto;font-weight:800}
+.tag{font-size:12px;padding:3px 10px;border-radius:12px;background:var(--bd);font-weight:700}
+.tilt{transition:transform .2s;transform-style:preserve-3d}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ac);color:#fff;padding:12px 22px;border-radius:14px;z-index:99;font-weight:700;opacity:0;transition:.3s;pointer-events:none}#toast.on{opacity:1}
+@media(max-width:800px){#auth{grid-template-columns:1fr}.stage{height:240px}.grid2{grid-template-columns:1fr}.src{grid-template-columns:100px 1fr 46px}.hero .cubewrap{display:none}}
+</style></head><body>
+<div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
+
+<section id="auth">
+ <div class="stage"><div class="tiltbox" id="tb"><div class="sheet" style="transform:translate(-150px,-60px) translateZ(-40px) rotate(-10deg)"><b></b><b></b><b></b><b></b></div><div class="sheet" style="transform:translate(110px,50px) translateZ(60px) rotate(8deg);animation-delay:-2s"><b></b><b></b><b></b><b></b></div><div class="cube"><i>📄</i><i>🔍</i><i>✅</i><i>📑</i><i>📝</i><i>🌐</i></div></div></div>
+ <div class="card"><div class="tabs"><button id="tL" class="on">Login</button><button id="tS">Sign up</button></div>
+  <h1 id="aT">Welcome back</h1><p class="sub">Plagiarism Checker for Short Documents</p>
+  <form id="af" autocomplete="off" onsubmit="return false">
+   <label class="f">Student name</label><input id="un" type="text" autocomplete="off" placeholder="Your full name">
+   <label class="f">Roll number</label><input id="ur" type="text" autocomplete="off" placeholder="Your roll number">
+   <div class="row"><button id="go" style="width:100%">Login</button></div><div class="err" id="er"></div>
+  </form></div>
+</section>
+
+<div id="app" class="hide">
+ <header><div class="logo"><div class="cubewrap" style="perspective:300px;width:40px;height:40px"><div class="cube sm" style="margin:-15px 0 0 -15px;position:relative;left:50%;top:50%"><i>📄</i><i>🔍</i><i>✅</i><i>📑</i><i>📝</i><i>🌐</i></div></div>Plagiarism Checker for Short Documents</div>
+  <nav><button data-v="web" class="on">🌐 Web check</button><button data-v="cmp">⚖️ Compare</button><button data-v="his">🕘 History</button></nav>
+  <label class="sw" title="Light / dark"><input type="checkbox" id="th"><span><em>☀️</em><em>🌙</em></span></label>
+  <span class="chip" id="me"></span><button class="ghost" id="lo" style="padding:8px 14px">Logout</button></header>
+ <main>
+  <div class="hero card tilt"><div><h1>Check your document</h1><p class="sub" style="margin:0">Find out how much of your writing matches other sources, and see exactly which lines are similar.</p></div></div>
+
+  <section id="v-web"><div class="card tilt"><h1 style="font-size:21px">Search the web</h1><p class="sub">Paste text or upload a file (Word, PowerPoint, PDF, TXT). We look for matching passages across websites.</p>
+   <label class="drop"><input type="file" id="fw" class="hide" accept=".txt,.md,.pdf,.docx,.pptx,.odt,.html,.csv">📎 <span id="nw">Upload a document</span></label>
+   <textarea id="tw" autocomplete="off" placeholder="…or paste your text here"></textarea>
+   <div class="row"><button id="bw">🔍 Check for plagiarism</button><button class="ghost" id="sm">Try a sample</button></div></div><div id="rw"></div></section>
+
+  <section id="v-cmp" class="hide"><div class="card"><h1 style="font-size:21px">Compare two documents</h1><p class="sub">Upload any two files in any format, or paste text, and see what they share.</p>
+   <div class="grid2"><div><label class="drop"><input type="file" id="f1" class="hide" accept=".txt,.md,.pdf,.docx,.pptx,.odt,.html,.csv">📎 <span id="n1">Document A</span></label><textarea id="t1" autocomplete="off" placeholder="Document A text"></textarea></div>
+   <div><label class="drop"><input type="file" id="f2" class="hide" accept=".txt,.md,.pdf,.docx,.pptx,.odt,.html,.csv">📎 <span id="n2">Document B</span></label><textarea id="t2" autocomplete="off" placeholder="Document B text"></textarea></div></div>
+   <div class="row"><button id="bc">⚖️ Compare documents</button></div></div><div id="rc"></div></section>
+
+  <section id="v-his" class="hide"><div class="card"><div class="row" style="margin:0"><h1 style="font-size:21px;margin:0">Your history</h1><button class="ghost" id="ch" style="margin-left:auto">Clear</button></div><div id="hl"></div></div></section>
+ </main>
+</div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const ST={g(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let users=ST.g('pc_users',{}),me=null,hist=[],mode='L';
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2600)}
+/* theme */
+const dk=ST.g('pc_theme',matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function setTheme(t){document.documentElement.dataset.theme=t;$('#th').checked=t=='dark';ST.s('pc_theme',t)}setTheme(dk);
+$('#th').onchange=e=>setTheme(e.target.checked?'dark':'light');
+/* 3D tilt */
+addEventListener('mousemove',e=>{const x=(e.clientX/innerWidth-.5),y=(e.clientY/innerHeight-.5);$('#tb').style.transform=`rotateY(${x*30}deg) rotateX(${-y*24}deg)`;
+$$('.tilt').forEach(c=>{const r=c.getBoundingClientRect();const dx=(e.clientX-r.left-r.width/2)/r.width,dy=(e.clientY-r.top-r.height/2)/r.height;c.style.transform=Math.abs(dx)<.7&&Math.abs(dy)<.9?`perspective(900px) rotateY(${dx*4}deg) rotateX(${-dy*4}deg)`:''})});
+/* auth */
+function setMode(m){mode=m;$('#tL').classList.toggle('on',m=='L');$('#tS').classList.toggle('on',m=='S');$('#go').textContent=m=='L'?'Login':'Create account';$('#aT').textContent=m=='L'?'Welcome back':'Create your account';$('#er').textContent=''}
+$('#tL').onclick=()=>setMode('L');$('#tS').onclick=()=>setMode('S');
+$('#go').onclick=()=>{const n=$('#un').value.trim(),r=$('#ur').value.trim().toUpperCase();if(!n||!r){$('#er').textContent='Please enter your name and roll number.';return}
+ if(mode=='S'){if(users[r]){$('#er').textContent='This roll number already has an account. Please login.';return}users[r]=n;ST.s('pc_users',users)}
+ else{if(!users[r]||users[r].toLowerCase()!=n.toLowerCase()){$('#er').textContent='No matching account found. Check your details or sign up.';return}}
+ me={n:users[r],r};hist=ST.g('pc_h_'+r,[]);$('#me').textContent=me.n+' · '+r;$('#auth').classList.add('hide');$('#app').classList.remove('hide');$('#un').value=$('#ur').value='';renderH();toast('Welcome, '+me.n+'!')};
+$('#lo').onclick=()=>{me=null;$('#app').classList.add('hide');$('#auth').classList.remove('hide')};
+$$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.classList.toggle('on',x==b));['web','cmp','his'].forEach(v=>$('#v-'+v).classList.toggle('hide',v!=b.dataset.v))});
+/* file reading */
+async function readFile(f){const e=f.name.split('.').pop().toLowerCase();
+ if(['txt','md','csv','html','json'].includes(e)){let t=await f.text();return e=='html'?new DOMParser().parseFromString(t,'text/html').body.textContent:t}
+ if(['docx','pptx','odt'].includes(e)){const z=await JSZip.loadAsync(await f.arrayBuffer());let o='';
+  const ns=Object.keys(z.files).filter(n=>e=='docx'?n=='word/document.xml':e=='pptx'?/^ppt\/slides\/slide\d+\.xml$/.test(n):n=='content.xml').sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  for(const n of ns)o+=(await z.file(n).async('string')).replace(/<\/(w:p|a:p|text:p)>/g,'\n').replace(/<[^>]+>/g,' ')+'\n';
+  return o.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/[ \t]+/g,' ')}
+ if(e=='pdf'){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let o='';for(let i=1;i<=d.numPages;i++){const c=await(await d.getPage(i)).getTextContent();o+=c.items.map(x=>x.str).join(' ')+'\n'}return o}
+ throw 0}
+function hook(fi,ta,nm){$(fi).onchange=async e=>{const f=e.target.files[0];if(!f)return;try{$(ta).value=(await readFile(f)).trim();$(nm).textContent=f.name;toast('Loaded '+f.name)}catch(x){toast("Couldn't read that file. Try Word, PowerPoint, PDF or TXT.")}}}
+hook('#fw','#tw','#nw');hook('#f1','#t1','#n1');hook('#f2','#t2','#n2');
+async function post(u,o){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(o)});if(!r.ok)throw 0;return r.json()}
+const NOSRV="Can't reach the Java server. Start it with: java Server";
+$('#sm').onclick=()=>{$('#tw').value="Climate change refers to long term shifts in temperatures and weather patterns. Since the nineteenth century human activities have been the main driver of climate change, mostly through burning fossil fuels. Photosynthesis is the process by which green plants convert light energy into chemical energy, and it is essential for life on our planet.";$('#nw').textContent='Sample text loaded'};
+/* render helpers */
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function hl(raw,m){let o='',on=0;raw.forEach((w,i)=>{if(m[i]&&!on){o+='<mark>';on=1}if(!m[i]&&on){o+='</mark> ';on=0}o+=esc(w)+' '});return o+(on?'</mark>':'')}
+const verdict=p=>p<15?['Looks original','#9be3c4']:p<40?['Some similarity','#fdd2ad']:['High similarity','#f7a8cf'];
+const ring=p=>{const v=verdict(p);return`<div class="ring" style="--p:${p};--c:${v[1]}"><div><span>${p}%<small>${v[0]}</small></span></div></div>`};
+function save(type,title,score,top){hist.unshift({type,title,score,top,d:new Date().toLocaleString()});hist=hist.slice(0,50);ST.s('pc_h_'+me.r,hist);renderH()}
+function renderH(){$('#hl').innerHTML=hist.length?hist.map(h=>`<div class="h"><span style="font-size:24px">${h.type=='web'?'🌐':'⚖️'}</span><div><b>${esc(h.title)}</b><small style="display:block;color:var(--mut)">${h.d} · ${h.top}</small></div><span class="pill">${h.score}%</span></div>`).join(''):'<p class="sub" style="margin-top:14px">No checks yet. Your results will appear here.</p>'}
+$('#ch').onclick=()=>{hist=[];ST.s('pc_h_'+me.r,hist);renderH()};
+/* web check */
+$('#bw').onclick=()=>{const t=$('#tw').value.trim(),d=prep(t);if(d.ids.length<8){toast('Please add at least 8 words.');return}
+ const dh=rk(d.ids,3),un=new Uint8Array(d.ids.length),res=[];
+ SRC.forEach(([n,u,x])=>{const s=prep(x);const sh=rk(s.ids,3);let ok=0;for(const[h,p]of dh)if(sh.has(h)&&kmp(s.ids,d.ids.slice(p[0],p[0]+3))>=0)ok++;
+  if(!ok){res.push([n,u,0]);return}const[A]=match(d.ids,s.ids);A.forEach((v,i)=>{if(v)un[i]=1});res.push([n,u,Math.round(cnt(A)/d.ids.length*100)])});
+ res.sort((a,b)=>b[2]-a[2]);const tot=Math.round(cnt(un)/d.ids.length*100),top=res[0][2]?res[0][0]:'No matches';
+ $('#rw').innerHTML=`<div class="card res"><div class="top">${ring(tot)}<div><h1 style="font-size:20px">Overall match: ${tot}%</h1><p class="sub" style="margin:0">${res[0][2]?`Most similar source: <b>${res[0][0]}</b> (${res[0][2]}%)`:'No matching sources were found.'}</p></div></div>
+ <h3>Similarity by source</h3>${res.map(r=>`<div class="src"><div><b>${r[0]}</b><small>${r[1]}</small></div><div class="bar"><i style="width:${r[2]}%"></i></div><b>${r[2]}%</b></div>`).join('')}
+ <h3>Highlighted matches</h3><div class="txt">${hl(d.raw,un)}</div></div>`;save('web',t.slice(0,48)+(t.length>48?'…':''),tot,top)};
+/* compare */
+$('#bc').onclick=()=>{const a=prep($('#t1').value),b=prep($('#t2').value);if(a.ids.length<8||b.ids.length<8){toast('Add at least 8 words to both documents.');return}
+ const[A,B]=match(a.ids,b.ids),pa=Math.round(cnt(A)/a.ids.length*100),pb=Math.round(cnt(B)/b.ids.length*100),o=Math.round((cnt(A)+cnt(B))/(a.ids.length+b.ids.length)*100);
+ $('#rc').innerHTML=`<div class="card res"><div class="top">${ring(o)}<div><h1 style="font-size:20px">Documents match: ${o}%</h1><p class="sub" style="margin:0">${pa}% of Document A appears in B · ${pb}% of Document B appears in A</p></div></div>
+ <div class="grid2" style="margin-top:16px"><div><h3>Document A</h3><div class="txt">${hl(a.raw,A)}</div></div><div><h3>Document B</h3><div class="txt">${hl(b.raw,B)}</div></div></div></div>`;
+ save('cmp',($('#n1').textContent.startsWith('Doc')?'Document A':$('#n1').textContent)+' vs '+($('#n2').textContent.startsWith('Doc')?'Document B':$('#n2').textContent),o,pa+'% / '+pb+'% overlap')};
+</script></body></html>
